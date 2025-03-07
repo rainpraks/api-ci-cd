@@ -33,16 +33,11 @@ func init() {
 }
 
 func getDeals(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	dealID, exists := vars["id"] // Check if an ID is provided
+	dealID := mux.Vars(r)["id"]
 
-	var url string
-	if exists {
-		// If an ID is provided, fetch a specific deal
+	url := fmt.Sprintf("%s?api_token=%s", pipedriveAPI, apiToken)
+	if dealID != "" {
 		url = fmt.Sprintf("%s/%s?api_token=%s", pipedriveAPI, dealID, apiToken)
-	} else {
-		// If no ID is provided, fetch all deals
-		url = fmt.Sprintf("%s?api_token=%s", pipedriveAPI, apiToken)
 	}
 
 	resp, err := http.Get(url)

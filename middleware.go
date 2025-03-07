@@ -34,16 +34,12 @@ func requestLogger(next http.Handler) http.Handler {
 		time.Sleep(5 * time.Millisecond) // Simulated network delay (for real-world, remove)
 		latency := time.Since(latencyStart)
 
-		// Log request
 		log.Printf(" %s %s", r.Method, r.URL.Path)
 
-		// Process request
 		next.ServeHTTP(w, r)
 
-		// Compute request duration
 		duration := time.Since(start)
 
-		// Store metrics safely
 		metrics.mu.Lock()
 		metrics.requests++
 		metrics.totalTime += duration
@@ -52,7 +48,6 @@ func requestLogger(next http.Handler) http.Handler {
 		metrics.endpointLatencies[r.URL.Path] += latency
 		metrics.mu.Unlock()
 
-		// Log response time
 		log.Printf(" %s %s took %v (Latency: %v, Processing: %v)",
 			r.Method, r.URL.Path, duration, latency, duration-latency)
 	})
@@ -63,7 +58,6 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
 	metrics.mu.Lock()
 	defer metrics.mu.Unlock()
 
-	// Compute mean request time and latency
 	meanDuration := time.Duration(0)
 	meanLatency := time.Duration(0)
 
@@ -72,7 +66,6 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
 		meanLatency = metrics.totalLatency / time.Duration(metrics.requests)
 	}
 
-	// Build response JSON
 	response := map[string]interface{}{
 		"total_requests":        metrics.requests,
 		"mean_request_duration": meanDuration.String(),
