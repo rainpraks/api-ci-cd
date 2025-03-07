@@ -41,3 +41,6 @@ jobs:
 
       - name: Check formatting (gofmt)
         run: gofmt -d . || true
+
+      - name: Run tests
+        run: go test ./...
