@@ -1,0 +1,7 @@
+.env
+
+/bin/
+/pkg/
+/*.exe
+/*.out
+
