@@ -32,3 +32,6 @@ Once you are ready to submit, we would like you to share your public GitHub repo
 link with Ragnar (ragnar.paide@pipedrive.com), Martin (martin.aun@pipedrive.com),
 Karoline (karoline.ansberg@pipedrive.com) and Keiri (keiri.tohvrel@pipedrive.com).
 Good luck!
+
+
+go test -v ./...

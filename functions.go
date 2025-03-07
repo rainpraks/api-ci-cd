@@ -12,8 +12,8 @@ import (
 	"github.com/joho/godotenv"
 )
 
-var apiToken string
-var pipedriveAPI string
+var ApiToken string
+var PipedriveAPI string
 
 func init() {
 
@@ -22,12 +22,12 @@ func init() {
 		log.Println("Warning: No .env file found, using system environment variables.")
 	}
 
-	apiToken = os.Getenv("PIPEDRIVE_API_TOKEN")
-	if apiToken == "" {
+	ApiToken = os.Getenv("PIPEDRIVE_API_TOKEN")
+	if ApiToken == "" {
 		log.Fatal("Missing PIPEDRIVE_API_TOKEN environment variable")
 	}
-	pipedriveAPI = os.Getenv("PIPEDRIVE_API_URL")
-	if pipedriveAPI == "" {
+	PipedriveAPI = os.Getenv("PIPEDRIVE_API_URL")
+	if PipedriveAPI == "" {
 		log.Fatal("Missing PIPEDRIVE_API_URL")
 	}
 }
@@ -35,9 +35,9 @@ func init() {
 func getDeals(w http.ResponseWriter, r *http.Request) {
 	dealID := mux.Vars(r)["id"]
 
-	url := fmt.Sprintf("%s?api_token=%s", pipedriveAPI, apiToken)
+	url := fmt.Sprintf("%s?api_token=%s", PipedriveAPI, ApiToken)
 	if dealID != "" {
-		url = fmt.Sprintf("%s/%s?api_token=%s", pipedriveAPI, dealID, apiToken)
+		url = fmt.Sprintf("%s/%s?api_token=%s", PipedriveAPI, dealID, ApiToken)
 	}
 
 	resp, err := http.Get(url)
@@ -61,7 +61,7 @@ func getDeals(w http.ResponseWriter, r *http.Request) {
 }
 
 func postDeal(w http.ResponseWriter, r *http.Request) {
-	url := fmt.Sprintf("%s?api_token=%s", pipedriveAPI, apiToken)
+	url := fmt.Sprintf("%s?api_token=%s", PipedriveAPI, ApiToken)
 	resp, err := http.Post(url, "application/json", r.Body)
 	if err != nil {
 		http.Error(w, "Failed to create deal", http.StatusInternalServerError)
@@ -78,7 +78,7 @@ func putDeal(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	dealID := vars["id"]
 
-	url := fmt.Sprintf("%s/%s?api_token=%s", pipedriveAPI, dealID, apiToken)
+	url := fmt.Sprintf("%s/%s?api_token=%s", PipedriveAPI, dealID, ApiToken)
 
 	req, err := http.NewRequest(http.MethodPut, url, r.Body)
 	if err != nil {
@@ -111,7 +111,7 @@ func deleteDeal(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	dealID := vars["id"]
 
-	url := fmt.Sprintf("%s/%s?api_token=%s", pipedriveAPI, dealID, apiToken)
+	url := fmt.Sprintf("%s/%s?api_token=%s", PipedriveAPI, dealID, ApiToken)
 
 	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	if err != nil {
