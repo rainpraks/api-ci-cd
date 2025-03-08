@@ -2,10 +2,6 @@
 name: Go CI Pipeline
 
 on:
-  push:
-    branches:
-      - develope
-      - main
   pull_request:
     branches:
       - develope
