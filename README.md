@@ -7,9 +7,6 @@ Part I - API
 Write a simple application in any language (Typescript or Golang preferred), with three
 endpoints, that all forward requests to the public Pipedrive API
 (https://developers.pipedrive.com/docs/api/v1/Deals). Use api-tokens.
-●
-●
-●
 GET /deals - gets all deals
 POST /deals - adds a new deal
 PUT /deals - updates an already existing deal
