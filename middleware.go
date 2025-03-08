@@ -8,7 +8,6 @@ import (
 	"time"
 )
 
-// Metrics struct to track both latency and request duration
 type Metrics struct {
 	mu                sync.Mutex
 	totalTime         time.Duration
@@ -18,20 +17,18 @@ type Metrics struct {
 	endpointLatencies map[string]time.Duration
 }
 
-// Global metrics instance
 var metrics = Metrics{
 	endpointMetrics:   make(map[string]time.Duration),
 	endpointLatencies: make(map[string]time.Duration),
 }
 
-// Middleware to log requests and measure latency/duration
 func requestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
 		// Simulate Latency Measurement (time until processing starts)
 		latencyStart := time.Now()
-		time.Sleep(5 * time.Millisecond) // Simulated network delay (for real-world, remove)
+		time.Sleep(5 * time.Millisecond)
 		latency := time.Since(latencyStart)
 
 		log.Printf(" %s %s", r.Method, r.URL.Path)
@@ -53,7 +50,6 @@ func requestLogger(next http.Handler) http.Handler {
 	})
 }
 
-// Handler for /metrics endpoint
 func getMetrics(w http.ResponseWriter, r *http.Request) {
 	metrics.mu.Lock()
 	defer metrics.mu.Unlock()
