@@ -30,17 +30,17 @@ jobs:
         run: |
             echo "PIPEDRIVE_API_TOKEN is set"
 
-      - name: Cache Go modules
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          # key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          key: ${{ runner.os }}-go-${{ github.run_id }}
+      # - name: Cache Go modules
+      #   uses: actions/cache@v3
+      #   with:
+      #     path: |
+      #       ~/.cache/go-build
+      #       ~/go/pkg/mod
+      #     # key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+      #     key: ${{ runner.os }}-go-${{ github.run_id }}
 
-          restore-keys: |
-            ${{ runner.os }}-go-
+      #     restore-keys: |
+      #       ${{ runner.os }}-go-
 
       - name: Build project
         run: go build -v ./...
