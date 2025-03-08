@@ -4,11 +4,11 @@ name: Go CI Pipeline
 on:
   push:
     branches:
-      - develop
+      - develope
       - main
   pull_request:
     branches:
-      - develop
+      - develope
       - main
 
 jobs:
@@ -23,6 +23,12 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: 1.21.4
+
+      - name: Set Environment Variables
+        env:
+            PIPEDRIVE_API_TOKEN: ${{ secrets.PIPEDRIVE_API_TOKEN }}
+        run: |
+            echo "PIPEDRIVE_API_TOKEN is set"
 
       - name: Cache Go modules
         uses: actions/cache@v3
@@ -44,4 +50,6 @@ jobs:
         run: gofmt -d . || true
 
       - name: Run tests
+        env:
+          PIPEDRIVE_API_TOKEN: ${{ secrets.PIPEDRIVE_API_TOKEN }}
         run: go test ./...
