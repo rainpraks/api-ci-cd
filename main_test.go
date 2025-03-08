@@ -24,10 +24,6 @@ func init() {
 	if ApiToken == "" {
 		log.Fatal("Missing PIPEDRIVE_API_TOKEN environment variable")
 	}
-	PipedriveAPI = os.Getenv("PIPEDRIVE_API_URL")
-	if PipedriveAPI == "" {
-		log.Fatal("Missing PIPEDRIVE_API_URL")
-	}
 }
 
 func setupRouter() *mux.Router {
