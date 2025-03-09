@@ -31,3 +31,4 @@ Karoline (karoline.ansberg@pipedrive.com) and Keiri (keiri.tohvrel@pipedrive.com
 Good luck!
 
 go test -v ./...
+.
