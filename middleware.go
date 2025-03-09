@@ -26,13 +26,6 @@ func requestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		// Simulate Latency Measurement (time until processing starts)
-		latencyStart := time.Now()
-		time.Sleep(5 * time.Millisecond)
-		latency := time.Since(latencyStart)
-
-		log.Printf(" %s %s", r.Method, r.URL.Path)
-
 		next.ServeHTTP(w, r)
 
 		duration := time.Since(start)
@@ -40,13 +33,10 @@ func requestLogger(next http.Handler) http.Handler {
 		metrics.mu.Lock()
 		metrics.requests++
 		metrics.totalTime += duration
-		metrics.totalLatency += latency
 		metrics.endpointMetrics[r.URL.Path] += duration
-		metrics.endpointLatencies[r.URL.Path] += latency
 		metrics.mu.Unlock()
 
-		log.Printf(" %s %s took %v (Latency: %v, Processing: %v)",
-			r.Method, r.URL.Path, duration, latency, duration-latency)
+		log.Printf("%s | %s | %v", r.Method, r.URL.Path, duration)
 	})
 }
 
