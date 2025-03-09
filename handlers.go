@@ -69,11 +69,11 @@ func postDeal(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(resp.StatusCode)
 	json.NewEncoder(w).Encode(resp.Body)
+
 }
 
 func putDeal(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	dealID := vars["id"]
+	dealID := mux.Vars(r)["id"]
 
 	url := fmt.Sprintf("%s/%s?api_token=%s", PipedriveAPI, dealID, ApiToken)
 
@@ -105,8 +105,7 @@ func putDeal(w http.ResponseWriter, r *http.Request) {
 }
 
 func deleteDeal(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	dealID := vars["id"]
+	dealID := mux.Vars(r)["id"]
 
 	url := fmt.Sprintf("%s/%s?api_token=%s", PipedriveAPI, dealID, ApiToken)
 

@@ -22,31 +22,34 @@ var metrics = Metrics{
 	endpointLatencies: make(map[string]time.Duration),
 }
 
+// This struct allows us to store the status code separately while still acting as a ResponseWriter.
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+// To override writeHeader inside the responseWriter struct.
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+
 func requestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		// Simulate Latency Measurement (time until processing starts)
-		latencyStart := time.Now()
-		time.Sleep(5 * time.Millisecond)
-		latency := time.Since(latencyStart)
-
-		log.Printf(" %s %s", r.Method, r.URL.Path)
-
-		next.ServeHTTP(w, r)
+		rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+		next.ServeHTTP(rw, r)
 
 		duration := time.Since(start)
 
 		metrics.mu.Lock()
 		metrics.requests++
 		metrics.totalTime += duration
-		metrics.totalLatency += latency
 		metrics.endpointMetrics[r.URL.Path] += duration
-		metrics.endpointLatencies[r.URL.Path] += latency
 		metrics.mu.Unlock()
 
-		log.Printf(" %s %s took %v (Latency: %v, Processing: %v)",
-			r.Method, r.URL.Path, duration, latency, duration-latency)
+		log.Printf("%s | %s | %d | %v", r.Method, r.URL.Path, rw.statusCode, duration)
 	})
 }
 
@@ -63,11 +66,11 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := map[string]interface{}{
-		"total_requests":        metrics.requests,
-		"mean_request_duration": meanDuration.String(),
-		"mean_request_latency":  meanLatency.String(),
-		"endpoint_metrics":      metrics.endpointMetrics,
-		"endpoint_latencies":    metrics.endpointLatencies,
+		"total_requests":     metrics.requests,
+		"request_duration":   meanDuration.String(),
+		"request_latency":    meanLatency.String(),
+		"endpoint_metrics":   metrics.endpointMetrics,
+		"endpoint_latencies": metrics.endpointLatencies,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

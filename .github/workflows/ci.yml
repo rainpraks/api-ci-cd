@@ -36,9 +36,6 @@ jobs:
       #     restore-keys: |
       #       ${{ runner.os }}-go-
 
-      - name: Build project
-        run: go build -v ./...
-
       - name: Run static analysis (go vet)
         run: go vet ./...
 
@@ -49,3 +46,6 @@ jobs:
         env:
           PIPEDRIVE_API_TOKEN: ${{ secrets.PIPEDRIVE_API_TOKEN }}
         run: go test ./...
+
+      - name: Build project
+        run: go build -v ./...
