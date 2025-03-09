@@ -3,27 +3,20 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 )
 
-func init() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Println("Warning: No .env file found, using system environment variables.")
-	}
-
-	ApiToken = os.Getenv("PIPEDRIVE_API_TOKEN")
-	if ApiToken == "" {
-		log.Fatal("Missing PIPEDRIVE_API_TOKEN environment variable")
-	}
+func TestMain(m *testing.M) {
+	// Mock environment variable
+	os.Setenv("PIPEDRIVE_API_TOKEN", "test_token")
+	exitVal := m.Run()
+	os.Exit(exitVal)
 }
 
 func setupRouter() *mux.Router {
@@ -33,20 +26,26 @@ func setupRouter() *mux.Router {
 	r.HandleFunc("/deals", postDeal).Methods("POST")
 	r.HandleFunc("/deals/{id}", putDeal).Methods("PUT")
 	r.HandleFunc("/deals/{id}", deleteDeal).Methods("DELETE")
+	r.HandleFunc("/metrics", getMetrics).Methods("GET")
 	return r
 }
 
 func TestGetDeals(t *testing.T) {
-	req, _ := http.NewRequest("GET", "/deals", nil)
+	req, err := http.NewRequest("GET", "/deals", nil)
+	assert.NoError(t, err)
+
 	rr := httptest.NewRecorder()
 	router := setupRouter()
 	router.ServeHTTP(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Contains(t, rr.Body.String(), `"success":true`)
 }
 
-func TestGetSingleDeal(t *testing.T) {
-	req, _ := http.NewRequest("GET", "/deals/123", nil)
+func TestGetDealByID(t *testing.T) {
+	req, err := http.NewRequest("GET", "/deals/123", nil)
+	assert.NoError(t, err)
+
 	rr := httptest.NewRecorder()
 	router := setupRouter()
 	router.ServeHTTP(rr, req)
@@ -55,54 +54,54 @@ func TestGetSingleDeal(t *testing.T) {
 }
 
 func TestPostDeal(t *testing.T) {
-	deal := map[string]interface{}{
-		"title":    "Test Deal",
-		"value":    5000,
-		"currency": "USD",
-	}
-
+	deal := map[string]string{"title": "New Deal"}
 	dealJSON, _ := json.Marshal(deal)
-	req, _ := http.NewRequest("POST", "/deals", bytes.NewBuffer(dealJSON))
+
+	req, err := http.NewRequest("POST", "/deals", bytes.NewBuffer(dealJSON))
+	assert.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
 	router := setupRouter()
 	router.ServeHTTP(rr, req)
 
-	assert.Equal(t, http.StatusCreated, rr.Code) // FIXED: Expect 201 instead of 200
+	assert.Equal(t, http.StatusCreated, rr.Code) // Expecting 201 Created
 }
 
 func TestPutDeal(t *testing.T) {
-	updateData := map[string]interface{}{
-		"title":    "Updated Deal",
-		"value":    7000,
-		"currency": "EUR",
-	}
+	deal := map[string]string{"title": "Updated Deal"}
+	dealJSON, _ := json.Marshal(deal)
 
-	updateJSON, _ := json.Marshal(updateData)
-	req, _ := http.NewRequest("PUT", "/deals/123", bytes.NewBuffer(updateJSON))
+	req, err := http.NewRequest("PUT", "/deals/123", bytes.NewBuffer(dealJSON))
+	assert.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
 	router := setupRouter()
 	router.ServeHTTP(rr, req)
 
-	if rr.Code == http.StatusNotFound {
-		t.Log("Received 404 Not Found, ensuring test gracefully handles missing deal")
-	} else {
-		assert.Equal(t, http.StatusOK, rr.Code)
-	}
+	assert.Contains(t, []int{http.StatusOK, http.StatusNotFound}, rr.Code) // Either 200 or 404
 }
 
 func TestDeleteDeal(t *testing.T) {
-	req, _ := http.NewRequest("DELETE", "/deals/123", nil)
+	req, err := http.NewRequest("DELETE", "/deals/123", nil)
+	assert.NoError(t, err)
+
 	rr := httptest.NewRecorder()
 	router := setupRouter()
 	router.ServeHTTP(rr, req)
 
-	if rr.Code == http.StatusGone {
-		t.Log("Received 410 Gone, ensuring test gracefully handles already deleted deal")
-	} else {
-		assert.Equal(t, http.StatusOK, rr.Code)
-	}
+	assert.Contains(t, []int{http.StatusOK, http.StatusGone}, rr.Code) // Either 200 or 410
+}
+
+func TestGetMetrics(t *testing.T) {
+	req, err := http.NewRequest("GET", "/metrics", nil)
+	assert.NoError(t, err)
+
+	rr := httptest.NewRecorder()
+	router := setupRouter()
+	router.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Contains(t, rr.Body.String(), `"total_requests"`)
 }
