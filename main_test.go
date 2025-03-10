@@ -15,7 +15,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	// Setup environment variable
+
 	os.Setenv("PIPEDRIVE_API_TOKEN", "mock_token")
 	ApiToken = os.Getenv("PIPEDRIVE_API_TOKEN")
 
@@ -86,12 +86,11 @@ func TestPostDeal(t *testing.T) {
 
 	assert.Equal(t, http.StatusCreated, rr.Code)
 
-	// Parse JSON response to compare values correctly
 	var expected, actual map[string]interface{}
 	json.Unmarshal([]byte(mockResponse), &expected)
 	json.Unmarshal(rr.Body.Bytes(), &actual)
 
-	assert.Equal(t, expected, actual) // Compare JSON responses as objects
+	assert.Equal(t, expected, actual)
 }
 
 func TestPutDeal(t *testing.T) {

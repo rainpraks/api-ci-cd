@@ -65,7 +65,7 @@ func postDeal(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body) // Read the response body
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		http.Error(w, "Failed to read response", http.StatusInternalServerError)
 		return
@@ -73,7 +73,7 @@ func postDeal(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(resp.StatusCode)
-	w.Write(body) // Write the actual response body to the client
+	w.Write(body)
 }
 
 func putDeal(w http.ResponseWriter, r *http.Request) {
