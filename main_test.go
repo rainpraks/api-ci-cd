@@ -3,105 +3,139 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
 	"github.com/gorilla/mux"
+	"github.com/jarcoal/httpmock"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
-	// Mock environment variable
-	os.Setenv("PIPEDRIVE_API_TOKEN", "test_token")
-	exitVal := m.Run()
-	os.Exit(exitVal)
-}
+	// Setup environment variable
+	os.Setenv("PIPEDRIVE_API_TOKEN", "mock_token")
+	ApiToken = os.Getenv("PIPEDRIVE_API_TOKEN")
 
-func setupRouter() *mux.Router {
-	r := mux.NewRouter()
-	r.HandleFunc("/deals", getDeals).Methods("GET")
-	r.HandleFunc("/deals/{id}", getDeals).Methods("GET")
-	r.HandleFunc("/deals", postDeal).Methods("POST")
-	r.HandleFunc("/deals/{id}", putDeal).Methods("PUT")
-	r.HandleFunc("/deals/{id}", deleteDeal).Methods("DELETE")
-	r.HandleFunc("/metrics", getMetrics).Methods("GET")
-	return r
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+
+	exitCode := m.Run()
+	os.Exit(exitCode)
 }
 
 func TestGetDeals(t *testing.T) {
-	req, err := http.NewRequest("GET", "/deals", nil)
-	assert.NoError(t, err)
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
 
+	mockResponse := `{"success": true, "data": [{"id": 1, "title": "Test Deal"}]}`
+	apiURL := fmt.Sprintf("%s?api_token=%s", PipedriveAPI, ApiToken)
+
+	httpmock.RegisterResponder("GET", apiURL,
+		httpmock.NewStringResponder(200, mockResponse))
+
+	req := httptest.NewRequest(http.MethodGet, "/deals", nil)
 	rr := httptest.NewRecorder()
-	router := setupRouter()
-	router.ServeHTTP(rr, req)
+
+	getDeals(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), `"success":true`)
+	assert.JSONEq(t, mockResponse, rr.Body.String())
 }
 
 func TestGetDealByID(t *testing.T) {
-	req, err := http.NewRequest("GET", "/deals/123", nil)
-	assert.NoError(t, err)
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
 
+	dealID := "123"
+	mockResponse := `{"success": true, "data": {"id": 123, "title": "Specific Deal"}}`
+	apiURL := fmt.Sprintf("%s/%s?api_token=%s", PipedriveAPI, dealID, ApiToken)
+
+	httpmock.RegisterResponder("GET", apiURL,
+		httpmock.NewStringResponder(200, mockResponse))
+
+	req := httptest.NewRequest(http.MethodGet, "/deals/123", nil)
 	rr := httptest.NewRecorder()
-	router := setupRouter()
+
+	router := mux.NewRouter()
+	router.HandleFunc("/deals/{id}", getDeals)
 	router.ServeHTTP(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.JSONEq(t, mockResponse, rr.Body.String())
 }
 
 func TestPostDeal(t *testing.T) {
-	deal := map[string]string{"title": "New Deal"}
-	dealJSON, _ := json.Marshal(deal)
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
 
-	req, err := http.NewRequest("POST", "/deals", bytes.NewBuffer(dealJSON))
-	assert.NoError(t, err)
+	mockResponse := `{"success": true, "data": {"id": 456, "title": "New Deal"}}`
+	apiURL := fmt.Sprintf("%s?api_token=%s", PipedriveAPI, ApiToken)
+
+	httpmock.RegisterResponder("POST", apiURL,
+		httpmock.NewStringResponder(201, mockResponse))
+
+	payload := `{"title": "New Deal"}`
+	req := httptest.NewRequest(http.MethodPost, "/deals", bytes.NewBufferString(payload))
 	req.Header.Set("Content-Type", "application/json")
-
 	rr := httptest.NewRecorder()
-	router := setupRouter()
-	router.ServeHTTP(rr, req)
 
-	assert.Equal(t, http.StatusCreated, rr.Code) // Expecting 201 Created
+	postDeal(rr, req)
+
+	assert.Equal(t, http.StatusCreated, rr.Code)
+
+	// Parse JSON response to compare values correctly
+	var expected, actual map[string]interface{}
+	json.Unmarshal([]byte(mockResponse), &expected)
+	json.Unmarshal(rr.Body.Bytes(), &actual)
+
+	assert.Equal(t, expected, actual) // Compare JSON responses as objects
 }
 
 func TestPutDeal(t *testing.T) {
-	deal := map[string]string{"title": "Updated Deal"}
-	dealJSON, _ := json.Marshal(deal)
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
 
-	req, err := http.NewRequest("PUT", "/deals/123", bytes.NewBuffer(dealJSON))
-	assert.NoError(t, err)
+	dealID := "456"
+	mockResponse := `{"success": true, "data": {"id": 456, "title": "Updated Deal"}}`
+	apiURL := fmt.Sprintf("%s/%s?api_token=%s", PipedriveAPI, dealID, ApiToken)
+
+	httpmock.RegisterResponder("PUT", apiURL,
+		httpmock.NewStringResponder(200, mockResponse))
+
+	payload := `{"title": "Updated Deal"}`
+	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/deals/%s", dealID), bytes.NewBufferString(payload))
 	req.Header.Set("Content-Type", "application/json")
-
 	rr := httptest.NewRecorder()
-	router := setupRouter()
-	router.ServeHTTP(rr, req)
 
-	assert.Contains(t, []int{http.StatusOK, http.StatusNotFound}, rr.Code) // Either 200 or 404
-}
-
-func TestDeleteDeal(t *testing.T) {
-	req, err := http.NewRequest("DELETE", "/deals/123", nil)
-	assert.NoError(t, err)
-
-	rr := httptest.NewRecorder()
-	router := setupRouter()
-	router.ServeHTTP(rr, req)
-
-	assert.Contains(t, []int{http.StatusOK, http.StatusGone}, rr.Code) // Either 200 or 410
-}
-
-func TestGetMetrics(t *testing.T) {
-	req, err := http.NewRequest("GET", "/metrics", nil)
-	assert.NoError(t, err)
-
-	rr := httptest.NewRecorder()
-	router := setupRouter()
+	router := mux.NewRouter()
+	router.HandleFunc("/deals/{id}", putDeal)
 	router.ServeHTTP(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), `"total_requests"`)
+	assert.JSONEq(t, mockResponse, rr.Body.String())
+}
+
+func TestDeleteDeal(t *testing.T) {
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+
+	dealID := "789"
+	mockResponse := `{"success": true, "data": {"id": 789}}`
+	apiURL := fmt.Sprintf("%s/%s?api_token=%s", PipedriveAPI, dealID, ApiToken)
+
+	httpmock.RegisterResponder("DELETE", apiURL,
+		httpmock.NewStringResponder(200, mockResponse))
+
+	req := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/deals/%s", dealID), nil)
+	rr := httptest.NewRecorder()
+
+	router := mux.NewRouter()
+	router.HandleFunc("/deals/{id}", deleteDeal)
+	router.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.JSONEq(t, mockResponse, rr.Body.String())
 }

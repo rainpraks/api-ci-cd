@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -66,10 +65,15 @@ func postDeal(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
+	body, err := io.ReadAll(resp.Body) // Read the response body
+	if err != nil {
+		http.Error(w, "Failed to read response", http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(resp.StatusCode)
-	json.NewEncoder(w).Encode(resp.Body)
-
+	w.Write(body) // Write the actual response body to the client
 }
 
 func putDeal(w http.ResponseWriter, r *http.Request) {
