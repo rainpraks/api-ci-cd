@@ -13,7 +13,7 @@ import (
 
 var ApiToken string
 
-const PipedriveAPI = "https://api.pipedrive.com/v1/deals"
+var PipedriveAPI string
 
 func init() {
 
@@ -23,6 +23,10 @@ func init() {
 	}
 
 	ApiToken = os.Getenv("PIPEDRIVE_API_TOKEN")
+	if ApiToken == "" {
+		log.Fatal("Missing PIPEDRIVE_API_TOKEN environment variable")
+	}
+	PipedriveAPI = os.Getenv("PIPEDRIVE_API_URL")
 	if ApiToken == "" {
 		log.Fatal("Missing PIPEDRIVE_API_TOKEN environment variable")
 	}

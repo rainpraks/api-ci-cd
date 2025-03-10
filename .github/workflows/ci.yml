@@ -26,6 +26,7 @@ jobs:
       - name: Set Environment Variables
         env:
             PIPEDRIVE_API_TOKEN: ${{ secrets.PIPEDRIVE_API_TOKEN }}
+            PIPEDRIVE_API_URL: ${{ secrets.PIPEDRIVE_API_URL }}
         run: |
             echo "PIPEDRIVE_API_TOKEN is set"
 
@@ -48,6 +49,8 @@ jobs:
       - name: Run tests
         env:
           PIPEDRIVE_API_TOKEN: ${{ secrets.PIPEDRIVE_API_TOKEN }}
+          PIPEDRIVE_API_URL: ${{ secrets.PIPEDRIVE_API_URL }}
+          
         run: go test ./...
 
       - name: Build project
