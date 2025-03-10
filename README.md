@@ -93,3 +93,4 @@ curl http://localhost:8080/metrics
 - Tests use a mock server to simulate Pipedrive API responses.
 - /metrics does not provide latency measurements because there is no access to a load balancer, making it impossible to accurately determine request latency.
 - GitHub Actions handles automated testing and deployment.
+- There is also functionality to retrieve a specific deal using GET /deals/{id}. However, deleted deals remain in the database for potential restoration. This means that even if a deal is no longer visible in the active Pipedrive UI, it can still be retrieved using its ID.
