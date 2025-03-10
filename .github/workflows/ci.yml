@@ -1,4 +1,3 @@
-# test3
 name: Go CI Pipeline
 
 on:
@@ -6,6 +5,9 @@ on:
     branches:
       - develope
       - main
+  push:
+    branches:
+      - develope
 
 jobs:
   build:
@@ -23,18 +25,9 @@ jobs:
       - name: Set Environment Variables
         env:
             PIPEDRIVE_API_TOKEN: ${{ secrets.PIPEDRIVE_API_TOKEN }}
+            PIPEDRIVE_API_URL: ${{ secrets.PIPEDRIVE_API_URL }}
         run: |
             echo "PIPEDRIVE_API_TOKEN is set"
-
-      # - name: Cache Go modules
-      #   uses: actions/cache@v3
-      #   with:
-      #     path: |
-      #       ~/.cache/go-build
-      #       ~/go/pkg/mod
-      #     key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-      #     restore-keys: |
-      #       ${{ runner.os }}-go-
 
       - name: Run static analysis (go vet)
         run: go vet ./...
@@ -45,6 +38,8 @@ jobs:
       - name: Run tests
         env:
           PIPEDRIVE_API_TOKEN: ${{ secrets.PIPEDRIVE_API_TOKEN }}
+          PIPEDRIVE_API_URL: ${{ secrets.PIPEDRIVE_API_URL }}
+          
         run: go test ./...
 
       - name: Build project

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -14,7 +13,7 @@ import (
 
 var ApiToken string
 
-const PipedriveAPI = "https://api.pipedrive.com/v1/deals"
+var PipedriveAPI string
 
 func init() {
 
@@ -24,6 +23,10 @@ func init() {
 	}
 
 	ApiToken = os.Getenv("PIPEDRIVE_API_TOKEN")
+	if ApiToken == "" {
+		log.Fatal("Missing PIPEDRIVE_API_TOKEN environment variable")
+	}
+	PipedriveAPI = os.Getenv("PIPEDRIVE_API_URL")
 	if ApiToken == "" {
 		log.Fatal("Missing PIPEDRIVE_API_TOKEN environment variable")
 	}
@@ -66,10 +69,15 @@ func postDeal(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, "Failed to read response", http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(resp.StatusCode)
-	json.NewEncoder(w).Encode(resp.Body)
-
+	w.Write(body)
 }
 
 func putDeal(w http.ResponseWriter, r *http.Request) {

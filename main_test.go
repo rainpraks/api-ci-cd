@@ -2,107 +2,199 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 )
 
-func init() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Println("Warning: No .env file found, using system environment variables.")
-	}
-
-	ApiToken = os.Getenv("PIPEDRIVE_API_TOKEN")
-	if ApiToken == "" {
-		log.Fatal("Missing PIPEDRIVE_API_TOKEN environment variable")
-	}
+type MockServer struct {
+	server *httptest.Server
 }
 
-func setupRouter() *mux.Router {
-	r := mux.NewRouter()
-	r.HandleFunc("/deals", getDeals).Methods("GET")
-	r.HandleFunc("/deals/{id}", getDeals).Methods("GET")
-	r.HandleFunc("/deals", postDeal).Methods("POST")
-	r.HandleFunc("/deals/{id}", putDeal).Methods("PUT")
-	r.HandleFunc("/deals/{id}", deleteDeal).Methods("DELETE")
-	return r
+func SetupMockServer() *MockServer {
+	ms := &MockServer{}
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		switch {
+
+		case r.Method == http.MethodGet && r.URL.Path == "/":
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"success":true,"data":[{"id":1,"title":"Deal 1"},{"id":2,"title":"Deal 2"}]}`))
+
+		case r.Method == http.MethodGet && r.URL.Path == "/123":
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"success":true,"data":{"id":123,"title":"Deal 123"}}`))
+
+		case r.Method == http.MethodPost && r.URL.Path == "/":
+			w.WriteHeader(http.StatusCreated)
+			w.Write([]byte(`{"success":true,"data":{"id":999,"title":"New Deal"}}`))
+
+		case r.Method == http.MethodPut && r.URL.Path == "/123":
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"success":true,"data":{"id":123,"title":"Updated Deal"}}`))
+
+		case r.Method == http.MethodDelete && r.URL.Path == "/123":
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"success":true,"data":{"id":123,"deleted":true}}`))
+
+		default:
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(`{"success":false,"error":"Not found"}`))
+		}
+	})
+
+	ms.server = httptest.NewServer(handler)
+	return ms
+}
+
+func (ms *MockServer) Close() {
+	ms.server.Close()
+}
+
+func (ms *MockServer) GetURL() string {
+	return ms.server.URL
+}
+
+func setupTestEnv(t *testing.T) (*mux.Router, *MockServer) {
+
+	mockServer := SetupMockServer()
+
+	os.Setenv("PIPEDRIVE_API_TOKEN", "test-token")
+	os.Setenv("PIPEDRIVE_API_URL", mockServer.GetURL())
+
+	ApiToken = os.Getenv("PIPEDRIVE_API_TOKEN")
+	PipedriveAPI = os.Getenv("PIPEDRIVE_API_URL")
+
+	router := mux.NewRouter()
+	router.HandleFunc("/deals", getDeals).Methods("GET")
+	router.HandleFunc("/deals/{id}", getDeals).Methods("GET")
+	router.HandleFunc("/deals", postDeal).Methods("POST")
+	router.HandleFunc("/deals/{id}", putDeal).Methods("PUT")
+	router.HandleFunc("/deals/{id}", deleteDeal).Methods("DELETE")
+
+	return router, mockServer
 }
 
 func TestGetDeals(t *testing.T) {
-	req, _ := http.NewRequest("GET", "/deals", nil)
+	router, mockServer := setupTestEnv(t)
+	defer mockServer.Close()
+
+	req, err := http.NewRequest("GET", "/deals", nil)
+	assert.NoError(t, err)
+
 	rr := httptest.NewRecorder()
-	router := setupRouter()
 	router.ServeHTTP(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
+
+	assert.Contains(t, rr.Body.String(), `"id":1,"title":"Deal 1"`)
+	assert.Contains(t, rr.Body.String(), `"id":2,"title":"Deal 2"`)
 }
 
-func TestGetSingleDeal(t *testing.T) {
-	req, _ := http.NewRequest("GET", "/deals/123", nil)
+func TestGetDealById(t *testing.T) {
+	router, mockServer := setupTestEnv(t)
+	defer mockServer.Close()
+
+	req, err := http.NewRequest("GET", "/deals/123", nil)
+	assert.NoError(t, err)
+
 	rr := httptest.NewRecorder()
-	router := setupRouter()
 	router.ServeHTTP(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
+
+	assert.Contains(t, rr.Body.String(), `"id":123,"title":"Deal 123"`)
 }
 
 func TestPostDeal(t *testing.T) {
-	deal := map[string]interface{}{
-		"title":    "Test Deal",
-		"value":    5000,
-		"currency": "USD",
-	}
+	router, mockServer := setupTestEnv(t)
+	defer mockServer.Close()
 
-	dealJSON, _ := json.Marshal(deal)
-	req, _ := http.NewRequest("POST", "/deals", bytes.NewBuffer(dealJSON))
+	payload := []byte(`{"title":"New Deal","value":1000}`)
+
+	req, err := http.NewRequest("POST", "/deals", bytes.NewBuffer(payload))
+	assert.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	router := setupRouter()
 	router.ServeHTTP(rr, req)
 
-	assert.Equal(t, http.StatusCreated, rr.Code) // FIXED: Expect 201 instead of 200
+	assert.Equal(t, http.StatusCreated, rr.Code)
+
+	assert.Contains(t, rr.Body.String(), `"id":999,"title":"New Deal"`)
 }
 
 func TestPutDeal(t *testing.T) {
-	updateData := map[string]interface{}{
-		"title":    "Updated Deal",
-		"value":    7000,
-		"currency": "EUR",
-	}
+	router, mockServer := setupTestEnv(t)
+	defer mockServer.Close()
 
-	updateJSON, _ := json.Marshal(updateData)
-	req, _ := http.NewRequest("PUT", "/deals/123", bytes.NewBuffer(updateJSON))
+	payload := []byte(`{"title":"Updated Deal","value":2000}`)
+
+	req, err := http.NewRequest("PUT", "/deals/123", bytes.NewBuffer(payload))
+	assert.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	router := setupRouter()
 	router.ServeHTTP(rr, req)
 
-	if rr.Code == http.StatusNotFound {
-		t.Log("Received 404 Not Found, ensuring test gracefully handles missing deal")
-	} else {
-		assert.Equal(t, http.StatusOK, rr.Code)
-	}
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	assert.Contains(t, rr.Body.String(), `"id":123,"title":"Updated Deal"`)
 }
 
 func TestDeleteDeal(t *testing.T) {
-	req, _ := http.NewRequest("DELETE", "/deals/123", nil)
+	router, mockServer := setupTestEnv(t)
+	defer mockServer.Close()
+
+	req, err := http.NewRequest("DELETE", "/deals/123", nil)
+	assert.NoError(t, err)
+
 	rr := httptest.NewRecorder()
-	router := setupRouter()
 	router.ServeHTTP(rr, req)
 
-	if rr.Code == http.StatusGone {
-		t.Log("Received 410 Gone, ensuring test gracefully handles already deleted deal")
-	} else {
-		assert.Equal(t, http.StatusOK, rr.Code)
-	}
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	assert.Contains(t, rr.Body.String(), `"id":123,"deleted":true`)
+}
+
+func TestErrorHandling(t *testing.T) {
+	router, mockServer := setupTestEnv(t)
+	defer mockServer.Close()
+
+	errorMockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		conn, _, _ := w.(http.Hijacker).Hijack()
+		conn.Close()
+	}))
+	defer errorMockServer.Close()
+
+	originalURL := PipedriveAPI
+	PipedriveAPI = errorMockServer.URL
+	defer func() { PipedriveAPI = originalURL }()
+
+	req, _ := http.NewRequest("GET", "/deals", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+
+	req, _ = http.NewRequest("POST", "/deals", bytes.NewBufferString(`{}`))
+	rr = httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+
+	req, _ = http.NewRequest("PUT", "/deals/123", bytes.NewBufferString(`{}`))
+	rr = httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+
+	req, _ = http.NewRequest("DELETE", "/deals/123", nil)
+	rr = httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
 }
